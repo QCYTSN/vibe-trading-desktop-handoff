@@ -1,5 +1,7 @@
 # Windows Release Runbook
 
+> **Prerequisite:** this runbook assumes the full source overlay has already been restored into a complete Vibe-Trading checkout matching the upstream `0.1.11` baseline. Do not run the release workflow from the standalone overlay repository.
+
 ## Repository setup
 
 1. Publish the work in a fork or in a repository approved by HKUDS.

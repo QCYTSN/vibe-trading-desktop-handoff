@@ -1,293 +1,177 @@
-# Vibe-Trading Desktop Community 0.3.0 Handoff
+# Vibe-Trading Desktop Community 0.3.0
 
-Last updated: 2026-07-21
+[简体中文](README.zh-CN.md) | [Short overview](README.md)
 
-## 1. Overview
+## Overview
 
-This is a Windows-focused community desktop prototype built around [HKUDS/Vibe-Trading](https://github.com/HKUDS/Vibe-Trading). It does not replace the existing application. It adds an Electron lifecycle host, an embedded Python runtime, a Windows installer, credential storage, a release/update path, and a small set of supporting frontend and backend changes around the existing React + FastAPI + Python Agent architecture.
+Vibe-Trading Desktop Community is an unofficial Windows desktop prototype for [HKUDS/Vibe-Trading](https://github.com/HKUDS/Vibe-Trading). It preserves the upstream React interface and Python/FastAPI agent, then adds a desktop host, Windows packaging, local lifecycle management, and desktop-focused usability and security improvements.
 
-The current product name is **Vibe-Trading Desktop Community**. It must not be represented as an official HKUDS client unless the maintainers explicitly approve that status.
+- Upstream package baseline: Vibe-Trading `0.1.11`
+- Desktop version: `0.3.0 Alpha`
+- Supported platform: Windows 10/11 x64
+- Desktop stack: Electron + React/Vite + FastAPI + embedded Python 3.12 runtime
 
-- Upstream source baseline: Vibe-Trading `0.1.11`
-- Desktop layer version: `0.3.0`
-- Current target: Windows 10/11 x64
-- Packaging: Electron + NSIS `.exe`
-- Backend: embedded relocatable Python 3.12 directory, not PyInstaller `--onefile`
+This is a community Alpha, not an official HKUDS desktop application. It is intended for research and evaluation and does not provide investment advice.
 
-The original working copy was extracted source without `.git` history. This handoff is therefore a path-preserving **source overlay**, not a Git patch. Upstream `main` has continued moving after 0.1.11, so these changes must be replayed and reviewed against current `main` instead of blindly overwriting newer files.
+![Vibe-Trading Desktop home](preview/desktop-home.png)
 
-## 2. Handoff contents
+## What has been implemented
 
-```text
-Vibe-Trading-Desktop-Handoff-0.3.0/
-├── README.zh-CN.md
-├── README.en.md
-├── release-assets/               # local Release upload staging
-│   ├── Vibe-Trading-Desktop-Community-0.3.0-x64.exe
-│   └── SHA256SUMS-0.3.0.txt
-├── preview/
-│   └── desktop-0.3.0-window.png
-└── source-overlay/
-│   ├── .github/workflows/
-│   ├── desktop/electron/
-│   ├── frontend/src/
-│   ├── agent/src/
-│   ├── agent/tests/
-│   ├── assets/icon.png
-│   ├── LICENSE
-│   └── NOTICE
-```
+### Desktop host and packaging
 
-Generated or reproducible data is intentionally excluded: `node_modules`, the expanded embedded Python runtime, caches, build logs, frontend/TypeScript output, and `win-unpacked`. The local working copy stages the Alpha EXE under `release-assets/`, but `.gitignore` prevents that 316 MiB binary from entering Git history. Publish it as a GitHub Release asset for hands-on evaluation.
-
-The included installer is:
-
-```text
-release-assets\Vibe-Trading-Desktop-Community-0.3.0-x64.exe
-```
-
-SHA-256:
-
-```text
-c27dfd2408c5b1218c948a7f775e948b9885c548a072ce6f426fa6099f88e3d1
-```
-
-The installer is approximately 316 MiB and the unpacked application is approximately 1.17 GiB. The current artifact is unsigned and should only be used for internal acceptance or clearly labeled Alpha testing.
-
-### Fast maintainer evaluation
-
-1. Use Windows 10/11 x64.
-2. Download the installer from the GitHub Release and verify it against `release-assets/SHA256SUMS-0.3.0.txt`.
-3. Run the installer. A Windows SmartScreen warning is expected because this Alpha is not yet Authenticode-signed.
-4. Launch **Vibe-Trading Desktop Community** and review the first-run disclosure.
-5. Configure a provider, model, and API key in Settings. No user credentials are included in this handoff.
-6. Exercise chat, real runtime model display, elapsed time, reply copy, main routes, and the IM Channel Center.
-7. Close the window and confirm that the owned embedded Python backend also exits.
-
-Use the repository for code review and the GitHub Release installer for hands-on evaluation.
-
-## 3. Implemented work
-
-### Desktop lifecycle and packaging
-
-- Electron owns the embedded FastAPI/Python backend process.
-- A random loopback port and per-launch `API_AUTH_KEY` are used.
-- The window waits for `/health` and provides loading and startup-failure states.
-- Single-instance enforcement and graceful shutdown with owned process-tree cleanup.
-- Sandboxed renderer, disabled Node integration, and a narrow preload IPC surface.
-- Windows NSIS installer, Start Menu/Desktop shortcuts, and the upstream project icon.
-- Embedded Python 3.12, built frontend, and a minimal GTK/Pango closure for PDF/WeasyPrint support.
-- Upstream MIT license, notice, and desktop privacy/security/release documents are bundled.
+- Starts the existing local Vibe-Trading backend automatically and loads it in a native desktop window.
+- Uses a random `127.0.0.1` port and a per-launch authentication secret.
+- Waits for backend health before showing the application.
+- Provides single-instance behavior, startup diagnostics, log capture, and controlled shutdown.
+- Cleans up the embedded Python process tree when the application exits.
+- Builds a Windows installer containing the Electron application, frontend assets, and an isolated Python runtime.
+- Uses the upstream project icon and includes license and notice files.
 
 ### Credentials and local security
 
-- Electron `safeStorage` provides Windows DPAPI-backed encryption for supported secrets.
-- Migration covers supported LLM keys, Tushare, QVeris, personal WeChat, and top-level IM channel secret fields.
-- Secrets are injected into the child backend environment and are not intentionally printed to desktop logs.
-- First-run acknowledgement covers community status, local data, model limitations, and live-trading risk.
+- Migrates desktop API credentials to Electron `safeStorage` on Windows, backed by Windows user-level encryption.
+- Injects credentials into the backend process without displaying secrets in the interface or normal logs.
+- Adds a first-run disclosure covering local data, credential handling, unofficial project status, and financial risk.
+- Keeps the backend bound to loopback instead of exposing it to the local network by default.
 
-This is not a complete security audit. Public release still requires a connector-by-connector secret inventory, log-redaction review, dependency review, and signed update-chain review.
+### Models and chat experience
 
-### Models and chat UX
+- Loads models from the selected provider after the user supplies a valid key.
+- Displays the complete discovered model list instead of filtering it by the current text value.
+- Replaces the browser-style model list with a consistent searchable selector while preserving manual model entry.
+- Shows the configured provider, model, and reasoning setting in the chat interface.
+- Records the provider-returned model identifier when available and shows response duration.
+- Fixes the reply copy button while retaining normal text selection and `Ctrl+C` behavior.
 
-- Provider model discovery after a key is configured.
-- All discovered models remain visible in the picker while custom model entry remains possible.
-- Picker styling and behavior are aligned with the surrounding Settings controls.
-- Chat displays the real configured provider, model, and reasoning level.
-- Replies display elapsed time.
-- Backend captures and persists the provider-returned `model` field instead of trusting model self-identification.
-- Desktop clipboard IPC fixes the reply copy button.
-- Temperature/reasoning guidance was added without changing the core financial-agent system prompt.
+The model's natural-language answer about its own identity is not treated as runtime evidence. The desktop UI uses actual configuration and response metadata instead.
 
-### Frontend loading
+### Loading and navigation
 
-- Main route modules are preloaded to reduce first-navigation waiting.
-- The React UI remains same-origin behind FastAPI, preserving REST, SSE, uploads, and SPA deep links.
-- First-run gate, desktop update settings, desktop environment types, and local asset/font improvements.
+- Preloads main route bundles after startup to reduce the delay on the first visit to each page.
+- Preserves same-origin HTTP/SSE behavior by loading the UI through the local FastAPI service rather than `file://`.
 
 ### IM channel center
 
-- A registry-driven desktop channel center covers all built-in adapters, not only WeChat.
-- WebSocket, Telegram, Slack, Discord, Matrix, WhatsApp, Signal, QQ/NapCat, WeChat, WeCom, Feishu/Lark, DingTalk, Teams, email, and Mochat are represented.
-- Availability, missing dependencies, generated configuration fields, enabled/runtime status, and recovery hints are shown.
-- Start/stop and pairing controls are supported; personal WeChat has a dedicated QR-login flow.
-- Adapters that require SDK extras, bot/business accounts, or platform credentials remain explicitly conditional.
+- Uses the upstream adapter registry rather than hard-coding a single platform.
+- Surfaces supported adapters, dependency status, configuration state, runtime state, and pairing guidance.
+- Includes the existing WeChat QR/pairing path while keeping other upstream-supported adapters available when their optional dependencies and credentials are installed.
 
-### Updates and CI release flow
+### Release and update foundation
 
-- Manual update check, download progress, and restart-to-install UX.
-- GitHub Releases assets: installer, `latest.yml`, and `.blockmap`.
-- Windows GitHub Actions workflow builds the frontend and embedded backend, runs smoke checks, packages the app, writes SHA-256, and creates a draft release.
-- The current workflow supports traditional certificate secrets through `CSC_LINK` and `CSC_KEY_PASSWORD`.
-- Local 0.3.0 intentionally has no update repository bound. CI binds the selected repository when a fork or upstream release home is chosen.
+- Includes a draft GitHub Actions workflow for reproducible Windows builds and release assets.
+- Includes a manual GitHub Releases update-check foundation.
+- The local `0.3.0` build intentionally leaves the update feed disabled until the project has a stable release repository and a real upgrade path has been tested.
 
-Never replace a published binary under the same version. Publish a higher version for every changed artifact.
-
-## 4. Validation status
-
-Completed:
-
-- 282/282 frontend tests pass.
-- 57/57 focused backend settings/channel/QVeris/runtime-metadata tests pass.
-- Embedded backend smoke startup passes; health is reached in about 6.6 seconds.
-- Interface smoke covers 68 OpenAPI operations plus main UI/API routes, assets, and SSE ticket behavior.
-- The unpacked Windows app starts the embedded backend and renders the first-run UI.
-- Closing the window leaves zero Electron/Python processes.
-- An earlier build passed clean Windows 11 VM installation and main route/LLM/tool-call acceptance.
-
-Still required:
-
-- Final 0.3.0 clean Windows 11 snapshot installation regression.
-- Real GitHub repository `N -> N+1` updater test.
-- Trusted Authenticode signing and SmartScreen observation.
-- Real-account end-to-end coverage for all 16 IM adapters.
-- Complete third-party license/SBOM review.
-- A second focused pass on installer size and cold navigation/startup performance.
-
-The full local Python suite was blocked by an Anaconda NumPy 2.3.5 versus older pandas/pyarrow ABI mismatch. That is not a known failure caused by this overlay, but the full suite must be rerun in an isolated lockfile-based environment or upstream CI before a public PR.
-
-## 5. Reconstructing reviewable Git history
-
-Start from a real clone:
-
-```powershell
-git clone https://github.com/HKUDS/Vibe-Trading.git
-cd Vibe-Trading
-git switch -c feat/windows-desktop-shell
-```
-
-Replay the overlay in reviewable slices:
-
-1. Independent `desktop/electron/` shell.
-2. Windows release workflow.
-3. Minimal backend API/runtime metadata changes.
-4. Frontend Settings/model/chat/channel changes.
-5. Tests and documentation.
-
-Run focused checks for each slice. Upstream requires a DCO `Signed-off-by:` trailer on every community commit:
-
-```powershell
-git commit -s -m "feat(desktop): add Windows Electron shell"
-```
-
-The upstream contribution guide also says not to add AI `Co-Authored-By` trailers or AI attribution lines to commits or PR descriptions.
-
-## 6. Local build
-
-```powershell
-cd frontend
-npm ci
-npm run build
-
-cd ..\desktop\electron
-npm ci
-npm run runtime:win
-npm run smoke:backend
-npm run smoke:interfaces
-npm run pack:win
-npm run installer:win
-npm run verify:release
-```
-
-Important outputs:
-
-- `release/win-unpacked/`
-- `release/Vibe-Trading-Desktop-Community-<version>-x64.exe`
-- `release/latest.yml`
-- `release/*.blockmap`
-- `release/SHA256SUMS.txt`
-
-## 7. Windows code signing
-
-### Ownership first
-
-Do not buy or provision a certificate before deciding who owns the product name, release repository, and updater feed. If upstream accepts an official desktop client, HKUDS or its approved legal entity should own the signing identity and CI authorization. Private keys or PFX files must never be committed or casually transferred between contributors.
-
-### Practical options
-
-1. **SignPath Foundation** — the first option to investigate for a qualifying public open-source project. It offers sponsored managed signing and keeps signing inside a controlled pipeline: https://signpath.io/solutions/open-source-community
-2. **Commercial OV certificate** — purchase from a CA in the Microsoft Trusted Root Program. The CA validates the publisher; modern OV private keys normally require a hardware token or cloud HSM. Confirm current regional, individual/organization, and CI support with the CA before purchase.
-3. **Azure Artifact Signing** — Microsoft's preferred non-Store cloud service, but current public eligibility is limited to organizations in the US, Canada, EU, and UK, and individuals in the US and Canada. It is not the first choice for an individual publisher in mainland China. If an eligible upstream entity owns it, electron-builder can use `win.azureSignOptions` plus Azure identity variables.
-4. **Microsoft Store MSIX** — Microsoft re-signs Store-submitted MSIX packages at no certificate cost. The current NSIS/Python-sidecar package is not MSIX and would require separate Store-policy and filesystem/loopback validation.
-5. **Self-signed certificate** — development or managed-enterprise use only. It does not create public Windows trust and does not solve SmartScreen for normal users.
-
-For a traditional PFX workflow, set protected CI secrets `CSC_LINK` and `CSC_KEY_PASSWORD`; electron-builder then signs the app binaries and NSIS installer. Use SHA-256 and an RFC 3161 timestamp, and verify both the installed application and installer:
-
-```powershell
-Get-AuthenticodeSignature .\Vibe-Trading-Desktop-Community-0.3.0-x64.exe
-signtool verify /pa /all /v .\Vibe-Trading-Desktop-Community-0.3.0-x64.exe
-```
-
-A public stable release should report `Valid`. A trusted signature proves publisher identity and file integrity, but new files may still need time and downloads to build SmartScreen reputation. Current Microsoft guidance no longer recommends paying for EV solely to obtain an immediate SmartScreen bypass.
-
-## 8. How to contact the maintainers
-
-The repository README and contribution guide do not publish a project email address. The preferred transparent route is:
-
-1. Open a post in [GitHub Discussions](https://github.com/HKUDS/Vibe-Trading/discussions), category **Ideas**.
-2. If there is no response after several days, use the repository's [feature request entry](https://github.com/HKUDS/Vibe-Trading/issues/new/choose).
-3. After the maintainers choose a direction, create a focused DCO-signed draft PR from a real fork.
-
-`@warren618` (Haozhe Wu) is visibly active in repository announcements and discussions and can be politely tagged. Do not lead with an unexplained executable or call the project official. Lead with source, architecture, validation, limitations, and the decisions needed from maintainers.
-
-### Maintainer contact template
-
-Suggested Discussion title:
+## Architecture
 
 ```text
-Proposal: Windows desktop shell and installer for Vibe-Trading
+Windows desktop application
+        |
+        +-- Electron main process
+        |     +-- window and application lifecycle
+        |     +-- encrypted credential storage
+        |     +-- backend health checks and logs
+        |     +-- update-check foundation
+        |
+        +-- embedded Python runtime
+              +-- local FastAPI service on 127.0.0.1:<random-port>
+              +-- existing Vibe-Trading agent, tools, data sources, and connectors
+              +-- serves the compiled React application
 ```
 
-Suggested body:
+Keeping the frontend and API on the same local origin preserves existing REST, SSE, upload, and SPA routing behavior.
 
-```markdown
-Hi HKUDS / Vibe-Trading maintainers — @warren618,
+## Installation
 
-I have been experimenting with a Windows desktop distribution for Vibe-Trading and would like to ask for direction before publishing it more broadly or preparing a large pull request.
+The public Git repository does **not** include an EXE installer. The source tree and checksum metadata are versioned in Git; generated installers must be attached separately to a GitHub Release.
 
-The prototype keeps the existing React + FastAPI + Python Agent architecture. An Electron host starts an embedded Python 3.12 backend on a random loopback port, waits for `/health`, loads the existing same-origin Web UI, and owns backend shutdown. It currently produces an NSIS installer under the temporary name **Vibe-Trading Desktop Community** and is not presented as an official HKUDS application.
+1. Open this repository's [Releases page](https://github.com/QCYTSN/vibe-trading-desktop-handoff/releases).
+2. Download `Vibe-Trading-Desktop-Community-0.3.0-x64.exe` and the matching checksum file when the release is available.
+3. Verify the SHA-256 checksum:
 
-The prototype also includes:
+   ```powershell
+   Get-FileHash .\Vibe-Trading-Desktop-Community-0.3.0-x64.exe -Algorithm SHA256
+   ```
 
-- OS-backed credential encryption through Electron `safeStorage` / Windows DPAPI;
-- first-run community, privacy, model-limitation, and trading-risk acknowledgement;
-- real provider/model/reasoning display and reply elapsed time;
-- improved model discovery and selection;
-- a registry-driven Settings UI for all built-in IM adapters, including personal WeChat QR login;
-- manual GitHub Releases update checks, blockmap metadata, and a draft-release Windows CI workflow;
-- project icon, license/notice bundling, interface smoke checks, and process cleanup.
+4. Run the installer. The current build is unsigned, so Windows may display a SmartScreen warning.
+5. Complete the first-run disclosure and configure your own provider/API credentials in Settings.
 
-Current validation includes 282 frontend tests, 57 focused backend tests, an embedded-backend smoke test, 68 OpenAPI operation probes, packaged-window startup, and clean process shutdown. An earlier build was also installed and exercised in a clean Windows 11 VM. The final build still needs a clean-install rerun, a real N-to-N+1 updater test, trusted code signing, and full license/SBOM review.
+Never publish API keys in issues, logs, screenshots, or repository files.
 
-Before I reconstruct the work as focused DCO-signed commits against current `main`, could you advise on the preferred direction?
+## Validation status
 
-1. Should this be proposed as a `desktop/` directory in the main repository, a separate HKUDS companion repository, or remain a community fork?
-2. Is the temporary name `Vibe-Trading Desktop Community` and use of the existing project icon acceptable during review?
-3. If an official desktop distribution is desirable, who should own Windows code signing and the GitHub Releases update feed?
-4. Which optional IM channel SDKs should be bundled by default versus installed on demand?
-5. Is the personal WeChat iLink integration an intended supported surface for desktop distribution?
-6. Would you prefer to review the independent Electron shell first, followed by the minimal backend/frontend integration patches?
+Completed on the development machine:
 
-I can share a source overlay, architecture/release notes, checksums, screenshots, and an explicitly unsigned/unofficial Alpha installer for testing. I will preserve the MIT license and follow the repository's DCO and contribution requirements.
+- 282/282 frontend tests pass.
+- 57/57 focused backend settings, channel, QVeris, and runtime-metadata tests pass.
+- Embedded-backend smoke testing passes.
+- Interface smoke testing covers 68 OpenAPI operations plus the main page, static assets, SSE ticket flow, and configuration paths.
+- The unpacked desktop application starts, loads the interface, exits normally, and leaves no packaged Electron or Python process behind.
+- Core provider/model discovery, chat completion, tool-call visibility, detailed replies, and task completion were manually exercised with a live API.
+- An earlier installer build was successfully installed and launched in a clean Windows 11 VirtualBox environment.
 
-Thank you for your work on Vibe-Trading. I would be happy to adapt the implementation to the repository structure and release model you prefer.
+Still required before calling the release production-ready:
+
+- Repeat clean-Windows installation and regression testing with the exact final `0.3.0` artifact.
+- Perform a real `0.3.0 -> 0.3.1` updater test, including download, verification, restart, and rollback behavior.
+- Test optional IM adapters with real accounts and their platform-specific SDKs or credentials.
+- Complete a final dependency-license, bundled-binary, and SBOM audit.
+
+## Known limitations and remaining work
+
+- **Unsigned installer:** SmartScreen warnings are expected until the project owner adopts a suitable Windows code-signing process.
+- **Package size:** the installer is approximately 316 MiB and the unpacked application approximately 1.17 GiB. Python scientific and connector dependencies are the main optimization target.
+- **Cold paths:** route preloading improves repeated navigation, but cold start and first-use latency need further profiling and staged loading.
+- **Updater:** update plumbing exists, but live updates are disabled until a stable release repository and signed release process are defined.
+- **Optional integrations:** not every connector or IM adapter can work without its own SDK, account, key, or regional availability.
+- **Windows only:** macOS and Linux packaging have not been implemented.
+- **Source provenance:** the working baseline came from an extracted source snapshot without `.git` history. The `source-overlay` directory preserves the resulting files but is not a clean upstream commit series.
+
+## Repository layout
+
+```text
+.
+├── README.md
+├── README.en.md
+├── README.zh-CN.md
+├── LICENSE
+├── NOTICE
+├── preview/
+│   ├── desktop-home.png
+│   └── desktop-onboarding.png
+├── release-assets/
+│   └── SHA256SUMS-0.3.0.txt
+└── source-overlay/
+    ├── .github/       # draft Windows release workflow
+    ├── agent/         # backend additions and changes
+    ├── assets/        # desktop assets and notices
+    ├── desktop/       # Electron host and packaging
+    └── frontend/      # desktop-focused UI changes
 ```
 
-For the first contact, share a public source branch or the lightweight handoff archive, screenshots, and test results. Offer the installer separately with its SHA-256 and the labels “unsigned Alpha” and “unofficial.”
+The installer is kept out of normal Git history and should be attached to a GitHub Release. Generated runtimes, dependency directories, and build outputs are also intentionally excluded.
 
-## 9. Recommended next work
+## Development and build notes
 
-1. Reconstruct focused DCO-signed commits in a real fork and rebase onto current upstream `main`.
-2. Obtain upstream direction on repository placement, branding, update ownership, and signing ownership.
-3. Run final 0.3.0 clean-Windows installation acceptance.
-4. Publish a test `0.3.0 -> 0.3.1` sequence and validate the complete updater flow.
-5. Apply to SignPath or provision signing through the confirmed publisher entity.
-6. Profile dependencies and split the core runtime from optional connector bundles instead of deleting Python packages blindly.
-7. Measure backend cold start, first route navigation, and antivirus scanning independently before optimizing.
-8. Produce a third-party license inventory and SBOM.
+> **Build prerequisite:** this public repository is an overlay, not a complete buildable Vibe-Trading checkout. Before running any build command, restore these files into a complete upstream Vibe-Trading source tree matching the `0.1.11` baseline. Do not build from the standalone overlay repository root.
 
-## 10. License and responsibility
+After restoring the overlay, the desktop build expects:
 
-Upstream is MIT licensed. `LICENSE` and `NOTICE` are included in this handoff. Any public distribution must retain upstream attribution and remain clearly labeled Community/Unofficial until HKUDS publicly approves official status.
+- Node.js/Bun dependencies for the React and Electron projects
+- Python 3.12 and the Vibe-Trading backend dependencies
+- A built frontend under the backend's static-serving path
+- An assembled isolated Python runtime for distributable Windows builds
 
-This is a financial research tool. Model, data, and strategy output are not guaranteed, and the desktop layer must not bypass upstream live-trading authorization, risk, confirmation, or audit boundaries.
+For upstream contribution, rebuild the work on a real fork from a known upstream commit and split the work into reviewable commits. Do not treat this snapshot overlay as a ready-to-merge pull request.
+
+## Security and financial-risk notice
+
+- Use only API keys and trading accounts you control.
+- Prefer restricted, revocable credentials and the lowest required permissions.
+- Validate strategies, market data, limits, and connector behavior before any real trading.
+- Model output may be incorrect, incomplete, delayed, or unsuitable for a specific market.
+- The application name and repository do not imply endorsement by HKUDS or any data/model provider.
+
+## License
+
+The project remains under the upstream MIT License. Vibe-Trading and its original work belong to their respective authors. Redistributed third-party components remain subject to their own licenses and notices.

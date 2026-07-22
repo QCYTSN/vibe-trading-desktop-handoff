@@ -1,317 +1,177 @@
-# Vibe-Trading Desktop Community 0.3.0 交接说明
+# Vibe-Trading Desktop Community 0.3.0
 
-更新时间：2026-07-21
+[English](README.en.md) | [简要说明](README.md)
 
-## 1. 这是什么
+## 项目介绍
 
-这是基于 [HKUDS/Vibe-Trading](https://github.com/HKUDS/Vibe-Trading) 的 Windows 社区桌面化原型。它没有重写 Vibe-Trading，而是在原有 React + FastAPI + Python Agent 外增加 Electron 桌面外壳、内置运行时、安装器、安全存储、更新流程和少量必要的前后端接口。
+Vibe-Trading Desktop Community 是为 [HKUDS/Vibe-Trading](https://github.com/HKUDS/Vibe-Trading) 制作的非官方 Windows 桌面端原型。它保留原项目的 React 界面和 Python/FastAPI Agent，在外层增加桌面窗口、Windows 安装包、本地进程管理，以及面向桌面使用场景的安全和体验优化。
 
-当前名称为 **Vibe-Trading Desktop Community**。在 HKUDS 明确认可之前，它不是官方客户端，不应使用“Official”字样。
+- 上游包版本基线：Vibe-Trading `0.1.11`
+- 桌面端版本：`0.3.0 Alpha`
+- 支持平台：Windows 10/11 x64
+- 技术结构：Electron + React/Vite + FastAPI + 内置 Python 3.12 运行环境
 
-版本关系：
+这是社区 Alpha，不是 HKUDS 官方桌面客户端。它仅供研究和评估，不构成投资建议。
 
-- 上游源码基线：Vibe-Trading `0.1.11`
-- 桌面层版本：`0.3.0`
-- 当前目标系统：Windows 10/11 x64
-- 安装器格式：Electron + NSIS `.exe`
-- 后端运行时：内置 Python 3.12 目录运行时，不使用 PyInstaller `--onefile`
+![Vibe-Trading Desktop 首页](preview/desktop-home.png)
 
-重要：原始工作目录是源码 ZIP，没有 `.git` 历史。本交接包是一个按原路径保存的 **source overlay**，不是可以直接提交的 Git patch。上游 `main` 在 0.1.11 发布后仍持续更新，因此合并到最新 `main` 时必须逐项重放和解决冲突，不应无检查地覆盖最新代码。
+## 已实现的内容
 
-## 2. 目录内容
+### 桌面宿主和安装包
+
+- 双击桌面应用后自动启动现有 Vibe-Trading 本地后端，并在独立窗口中加载界面。
+- 每次启动使用随机 `127.0.0.1` 端口和临时认证密钥。
+- 后端健康检查通过后才展示应用界面。
+- 支持单实例、启动诊断、日志记录和受控退出。
+- 应用退出时清理内置 Python 子进程，避免后台残留。
+- Windows 安装包内含 Electron 应用、前端资源和隔离的 Python 运行环境。
+- 使用上游项目图标，并保留许可证与声明文件。
+
+### 凭据与本地安全
+
+- 桌面端 API 凭据迁移到 Electron `safeStorage`，在 Windows 上使用当前用户级系统加密。
+- 凭据在启动后端时注入，不在界面或常规日志中显示明文。
+- 首次启动会说明本地数据、凭据处理、非官方身份和金融风险。
+- 后端默认只监听本机回环地址，不向局域网开放。
+
+### 模型和聊天体验
+
+- 用户填写有效 Key 后，可从所选服务商加载模型。
+- 下拉框显示完整模型列表，不再被当前输入内容过滤掉其他模型。
+- 模型选择器与整体界面风格统一，同时保留手动填写模型名的能力。
+- 聊天界面显示实际配置的服务商、模型和推理强度。
+- API 返回真实模型字段时会记录，并显示每次回复耗时。
+- 修复回复右上角复制按钮，同时保留框选文本和 `Ctrl+C`。
+
+模型在自然语言中自称什么不能证明实际调用了哪个模型，因此桌面端以真实配置和 API 返回元数据为准。
+
+### 页面加载与导航
+
+- 启动后预加载主要页面代码，降低第一次进入各页面时的等待感。
+- 继续通过本地 FastAPI 以同源方式提供页面，而不是使用 `file://`，从而保留 REST、SSE、文件上传和 SPA 路由行为。
+
+### IM 通道中心
+
+- 读取上游通道注册表，不把界面限制为微信或某一个平台。
+- 展示已有适配器、依赖状态、配置状态、运行状态和配对提示。
+- 保留微信二维码/配对流程；其他上游支持的平台在安装可选依赖并提供相应账号或凭据后也可使用。
+
+### 发布和更新基础
+
+- 提供 Windows 构建与 Release 资产的 GitHub Actions 草案。
+- 提供基于 GitHub Releases 的手动检查更新基础能力。
+- 当前本地 `0.3.0` 未绑定稳定发布仓库；在真实升级链路验证完成前，更新源保持禁用。
+
+## 技术结构
 
 ```text
-Vibe-Trading-Desktop-Handoff-0.3.0/
-├── README.zh-CN.md               # 本文
-├── README.en.md                  # 英文交接说明和英文联系模板
-├── release-assets/               # 本地 Release 上传暂存目录
-│   ├── Vibe-Trading-Desktop-Community-0.3.0-x64.exe
-│   └── SHA256SUMS-0.3.0.txt
+Windows 桌面应用
+        |
+        +-- Electron 主进程
+        |     +-- 窗口和应用生命周期
+        |     +-- 系统加密凭据存储
+        |     +-- 后端健康检查与日志
+        |     +-- 检查更新基础能力
+        |
+        +-- 内置 Python 运行环境
+              +-- 127.0.0.1:<随机端口> 上的本地 FastAPI 服务
+              +-- 原有 Agent、工具、数据源和连接器
+              +-- 托管编译后的 React 页面
+```
+
+前后端保持在同一本地来源，可以继续复用原项目的 REST、SSE、上传和路由机制。
+
+## 安装方法
+
+公共 Git 仓库中**不包含 EXE 安装程序**。Git 中保存的是源码和校验信息；生成的安装程序必须单独作为 GitHub Release 附件发布。
+
+1. 打开本仓库的 [Releases 页面](https://github.com/QCYTSN/vibe-trading-desktop-handoff/releases)。
+2. Release 发布后，下载 `Vibe-Trading-Desktop-Community-0.3.0-x64.exe` 和对应校验文件。
+3. 在 PowerShell 中核对 SHA-256：
+
+   ```powershell
+   Get-FileHash .\Vibe-Trading-Desktop-Community-0.3.0-x64.exe -Algorithm SHA256
+   ```
+
+4. 运行安装程序。当前版本尚未签名，Windows 可能显示 SmartScreen 提示。
+5. 阅读首次启动提示，然后在“设置”中填写你自己的模型服务商和 API 凭据。
+
+不要把 API Key 发到 Issue、日志、截图或仓库文件中。
+
+## 验证状态
+
+已在开发机完成：
+
+- 前端测试 282/282 通过。
+- 相关后端设置、通道、QVeris 和运行元数据测试 57/57 通过。
+- 内置后端烟雾测试通过。
+- 接口烟雾测试覆盖 68 个 OpenAPI 操作，以及首页、静态资源、SSE ticket 和配置路径。
+- 解包版桌面应用可正常启动、加载页面、退出，并且退出后没有打包版 Electron 或 Python 进程残留。
+- 使用真实 API 手动验证了服务商/模型加载、聊天回复、工具调用过程、详细结果和任务正常结束。
+- 较早的安装包构建已在干净 Windows 11 VirtualBox 环境中成功安装和启动。
+
+在称为正式可发布版本前仍需完成：
+
+- 用最终 `0.3.0` 安装包在干净 Windows 快照中重新执行完整回归。
+- 发布测试版 `0.3.0 -> 0.3.1`，验证检查、下载、校验、重启、升级和回滚行为。
+- 使用真实账号和各平台专用 SDK/凭据验证可选 IM 通道。
+- 完成依赖许可证、内置二进制文件和 SBOM 的最终审计。
+
+## 已知缺陷和后续工作
+
+- **安装包未签名：** 在项目负责人确定代码签名方案前，SmartScreen 提示属于预期现象。
+- **体积较大：** 当前安装包约 316 MiB，解包后约 1.17 GiB；主要优化对象是 Python 科学计算和连接器依赖。
+- **冷启动路径：** 路由预加载改善了重复访问，但冷启动和首次使用耗时仍需继续分析和分阶段加载。
+- **自动更新：** 基础代码已存在，但在发布仓库、签名和真实升级测试确定前不会启用线上更新。
+- **可选集成：** 部分连接器和 IM 通道必须安装额外 SDK，并需要各平台账号、Key 或地区可用性。
+- **目前仅支持 Windows：** macOS 和 Linux 尚未制作安装包。
+- **源码来源限制：** 当前工作基线来自没有 `.git` 历史的源码快照。`source-overlay` 保存了改动后的相关文件，但不是可直接合并的上游提交序列。
+
+## 仓库结构
+
+```text
+.
+├── README.md
+├── README.en.md
+├── README.zh-CN.md
+├── LICENSE
+├── NOTICE
 ├── preview/
-│   └── desktop-0.3.0-window.png  # 已验证桌面窗口预览
-└── source-overlay/               # 按上游相对路径保存的新增/修改源码
-│   ├── .github/workflows/
-│   ├── desktop/electron/
-│   ├── frontend/src/
-│   ├── agent/src/
-│   ├── agent/tests/
-│   ├── assets/icon.png
-│   ├── LICENSE
-│   └── NOTICE
+│   ├── desktop-home.png
+│   └── desktop-onboarding.png
+├── release-assets/
+│   └── SHA256SUMS-0.3.0.txt
+└── source-overlay/
+    ├── .github/       # Windows Release 工作流草案
+    ├── agent/         # 后端新增和修改
+    ├── assets/        # 桌面资源和声明
+    ├── desktop/       # Electron 宿主与打包
+    └── frontend/      # 桌面体验相关前端修改
 ```
 
-为保持交接包轻量，以下内容没有复制：
+安装程序不进入普通 Git 历史，应作为 GitHub Release 附件发布。运行环境、依赖目录和构建输出等可生成内容也不会提交。
 
-- `node_modules`
-- 内置 Python `runtime/backend`
-- Electron/Python 下载缓存和构建日志
-- `frontend/dist`、TypeScript `dist`
-- `release/win-unpacked`
+## 开发和构建说明
 
-这些都是可由源码和工作流重新生成的产物。本地工作副本会把安装器暂存在 `release-assets/`，但 `.gitignore` 会阻止约 316 MiB 的 EXE 进入 Git 历史；实际体验版本应上传为 GitHub Release 资产。
+> **构建前提：** 当前公共仓库只是 overlay，并不是完整可构建的 Vibe-Trading 源码树。执行任何构建命令前，必须先把这些文件还原到与 `0.1.11` 基线匹配的完整上游 Vibe-Trading 源码中；不要直接在这个独立 overlay 仓库根目录构建。
 
-```text
-release-assets\Vibe-Trading-Desktop-Community-0.3.0-x64.exe
-```
+还原 overlay 后，还需要准备：
 
-SHA-256：
+- React 和 Electron 项目所需的 Node.js/Bun 依赖
+- Python 3.12 和 Vibe-Trading 后端依赖
+- 编译并放到后端静态托管位置的前端资源
+- 用于 Windows 分发的隔离 Python 运行环境
 
-```text
-c27dfd2408c5b1218c948a7f775e948b9885c548a072ce6f426fa6099f88e3d1
-```
+如果后续要向上游贡献，应从可确认提交的官方仓库 fork 重新整理这些改动，并拆成便于审查的提交。不要把当前快照 overlay 当成可直接合并的 Pull Request。
 
-当前安装器约 316 MiB，解包应用约 1.17 GiB，尚未签名，只适合内部验收或明确标注的 Alpha 测试。
+## 安全与金融风险
 
-### 给维护者的最短体验步骤
+- 只使用你本人控制的 API Key 和交易账户。
+- 优先使用可撤销、权限受限的凭据，并只授予必要权限。
+- 任何真实交易前，都要自行复核策略、市场数据、额度和连接器行为。
+- 模型输出可能错误、不完整、过时，或不适用于特定市场。
+- 本应用名称和仓库不代表 HKUDS 或任何模型、数据服务商的认可。
 
-1. 使用 Windows 10/11 x64。
-2. 从 GitHub Release 下载安装器，并核对 `release-assets/SHA256SUMS-0.3.0.txt`。
-3. 双击安装器；Windows SmartScreen 出现警告是因为当前 Alpha 尚未签名，不代表已经获得官方信任。
-4. 安装完成后启动 **Vibe-Trading Desktop Community**。
-5. 阅读并接受首次启动说明。
-6. 在 Settings 中配置自己的模型供应商、模型和 API Key；交接包不包含任何用户密钥。
-7. 测试聊天、模型显示、回复耗时、复制按钮、主要页面和 IM Channel Center。
-8. 关闭窗口后确认桌面端及其内置 Python 后端一同退出。
+## 许可证
 
-源码审查直接使用本仓库；实际安装体验使用 GitHub Release 中的安装器。
-
-## 3. 新增和优化内容
-
-### 3.1 桌面宿主与安装器
-
-- Electron 主进程启动内置 FastAPI/Python 后端。
-- 每次启动自动选择随机的 `127.0.0.1` 端口。
-- 每次启动生成独立的随机 `API_AUTH_KEY`，不使用固定本地口令。
-- 轮询 `/health` 成功后才加载原有 Web UI，并提供加载/失败页面。
-- 单实例锁，避免重复打开多个后端。
-- 应用关闭时先请求正常停止，再清理所拥有的后端进程树。
-- 渲染进程禁用 Node integration，使用 sandbox 和受限 preload IPC。
-- Windows NSIS 安装器、桌面/开始菜单快捷方式、上游项目图标。
-- 内置 Python 3.12、前端静态文件及 PDF/WeasyPrint 所需的最小 GTK/Pango 运行库。
-- 保留 MIT `LICENSE`、`NOTICE` 和桌面隐私/安全/发布说明。
-
-### 3.2 凭据与本地安全
-
-- 使用 Electron `safeStorage`，在 Windows 上由 DPAPI 加密保存支持的密钥。
-- 支持迁移 LLM、Tushare、QVeris、个人微信及 IM 通道顶层敏感字段。
-- 密钥通过子进程环境变量注入后端，不在桌面日志中打印明文。
-- 首次启动增加社区非官方说明、本地数据说明、模型局限及真实交易风险确认。
-
-这不是完整的安全审计。公开发布前仍需要重新审查所有可选连接器的密钥字段、日志脱敏、依赖供应链和更新签名。
-
-### 3.3 模型和聊天体验
-
-- 模型选择器支持使用已配置 Key 动态加载供应商模型列表。
-- 下拉列表会展示全部已发现模型，不再要求先删除手填文字才能看到其他模型。
-- 模型下拉样式和手感与设置页其他控件统一，同时保留手动输入自定义模型的能力。
-- 聊天界面固定显示真实运行配置，例如 `DeepSeek · deepseek-v4-flash` 和推理强度。
-- 每次回复显示耗时。
-- 后端捕获并持久化 API 返回的真实 `model` 元数据，不再依靠模型自己回答“你是什么模型”。
-- 修复桌面窗口中回复右上角复制按钮失效的问题。
-- 增加温度和推理强度的说明，不改变金融 Agent 的核心系统提示词。
-
-### 3.4 页面加载和前端体验
-
-- 对主要路由模块进行预加载，改善第一次打开页面的等待感。
-- 保持 FastAPI 同源托管 React，避免 `file://`、CORS、SSE 和 SPA 深层路由问题。
-- 首次启动门、桌面更新设置卡片和桌面环境类型声明。
-- 本地字体/资源及页面加载细节优化。
-
-### 3.5 IM 通道中心
-
-- 新增由后端注册表驱动的桌面通道中心，不只支持微信。
-- 展示上游内置的 WebSocket、Telegram、Slack、Discord、Matrix、WhatsApp、Signal、QQ/NapCat、微信、企业微信、飞书、钉钉、Teams、Email、Mochat 等适配器。
-- 展示可用性、缺失依赖、配置字段、启用状态、运行状态和恢复提示。
-- 支持启动、停止、配对命令；个人微信提供专门的二维码登录流程。
-- 不会假装所有通道开箱即用：需要对应 SDK、Bot/企业账号或平台凭据的通道仍需按平台配置。
-
-### 3.6 更新和发布流水线
-
-- 设置页提供手动“检查更新”。
-- 支持下载进度、下载完成后重启安装。
-- GitHub Releases 使用 `latest.yml`、安装器和 `.blockmap`；blockmap 可支持差分下载。
-- GitHub Actions Windows 工作流构建前端和内置后端、运行烟雾测试、打包、计算 SHA-256，并创建草稿 Release。
-- 工作流目前接受传统证书 secrets：`CSC_LINK` 和 `CSC_KEY_PASSWORD`。
-- 本地 0.3.0 构建未绑定一个真实发布仓库，因此应用内更新功能保持禁用；选定 fork/官方仓库后，CI 会写入正确的 release repository。
-
-永远不要用相同版本号替换已经发布的二进制文件。出现问题应发布更高版本。
-
-## 4. 已完成验证
-
-- 前端：282/282 测试通过。
-- 相关后端：57/57 设置、通道、QVeris、运行时元数据测试通过。
-- 内置后端启动烟雾测试通过，健康检查约 6.6 秒内完成。
-- 接口烟雾测试覆盖 68 个 OpenAPI 操作以及主页面、静态资源、SSE ticket 等关键路径。
-- Windows 解包应用成功启动内置 Python 后端并显示首次启动界面。
-- 关闭窗口后，Electron/Python 残留进程数为零。
-- 较早桌面构建已在干净 Windows 11 VirtualBox 虚拟机完成安装和主要页面/LLM/工具调用验收。
-
-尚未完成：
-
-- 最终 0.3.0 在全新 Windows 11 快照上的重新安装验收。
-- 真实 GitHub 仓库中的 `N -> N+1` 自动更新全链路测试。
-- 受信任 Authenticode 签名及 SmartScreen 实机观察。
-- 所有 16 个 IM 平台的真实账号端到端测试。
-- 完整第三方许可证/SBOM 审计。
-- 安装器体积和首次页面冷加载的第二轮专项优化。
-
-本机完整 Python 测试套件曾被 Anaconda 环境中的 NumPy 2.3.5 与旧 pandas/pyarrow ABI 冲突阻塞；这不是已定位到本项目改动的代码失败。公开 PR 前应在隔离、锁定依赖的环境或官方 CI 上重新运行完整套件。
-
-## 5. 如何在真正的 Git 仓库中继续开发
-
-推荐流程：
-
-```powershell
-git clone https://github.com/HKUDS/Vibe-Trading.git
-cd Vibe-Trading
-git switch -c feat/windows-desktop-shell
-```
-
-然后不要一次性盲目覆盖最新 `main`。建议按下列顺序从 `source-overlay` 重放：
-
-1. `desktop/electron/` 独立桌面层；
-2. `.github/workflows/desktop-windows.yml`；
-3. 最小后端 API/运行时元数据改动；
-4. 前端设置、模型、聊天和通道 UI；
-5. 测试和文档。
-
-每一块单独提交并运行相应测试。上游要求社区 PR 的每个 commit 都带 DCO `Signed-off-by:`，例如：
-
-```powershell
-git commit -s -m "feat(desktop): add Windows Electron shell"
-```
-
-不要在 commit 或 PR 描述中加入 AI `Co-Authored-By`；上游明确要求只保留 DCO sign-off。
-
-## 6. 本地构建和发布
-
-在仓库根目录先构建前端，然后进入桌面目录：
-
-```powershell
-cd frontend
-npm ci
-npm run build
-
-cd ..\desktop\electron
-npm ci
-npm run runtime:win
-npm run smoke:backend
-npm run smoke:interfaces
-npm run pack:win
-npm run installer:win
-npm run verify:release
-```
-
-常用产物：
-
-- `release/win-unpacked/`：无需安装的调试版。
-- `release/Vibe-Trading-Desktop-Community-<version>-x64.exe`：NSIS 安装器。
-- `release/latest.yml`：electron-updater 元数据。
-- `release/*.blockmap`：差分更新元数据。
-- `release/SHA256SUMS.txt`：发布校验值。
-
-## 7. Windows 代码签名证书怎么做
-
-### 7.1 先决定签名归属
-
-最推荐的顺序：
-
-1. 先在上游 Discussions 的 Ideas 分类联系维护者。
-2. 确认项目是并入主仓库、单独官方仓库，还是社区 fork。
-3. 再决定应用名称、GitHub Releases 更新源和签名主体。
-
-如果上游接收为官方桌面端，应由 HKUDS/其认可的法律主体持有签名身份、签名服务和 GitHub secrets。贡献者不应该把私人证书或 PFX 交给他人，也不应把证书放进 Git。
-
-### 7.2 可选方案
-
-**A. SignPath Foundation（开源项目优先尝试）**
-
-- 对符合条件的开源项目提供免费托管签名。
-- 适合没有公司主体、希望签名留在受控 CI 流水线的社区项目。
-- 需要项目公开、申请审核并按其流水线要求配置。
-- 官方入口：https://signpath.io/solutions/open-source-community
-
-**B. 商业 OV 代码签名证书**
-
-- 向 Microsoft Trusted Root Program 中的 CA 购买，例如 DigiCert、Sectigo、GlobalSign 等。
-- CA 会验证个人或组织身份。
-- 现代 OV 私钥通常需要硬件 token 或云 HSM，不能把可导出的私钥随意塞入 GitHub secrets。
-- 对位于中国大陆的个人/组织，这是比 Azure Artifact Signing 更现实的传统路线，但购买前要向 CA 确认其当前地区、个人/组织验证和 CI/HSM支持。
-
-**C. Azure Artifact Signing（原 Trusted Signing）**
-
-- 微软推荐用于 Store 外发布，并可直接集成 CI。
-- 但微软当前公开说明中，组织仅限美国、加拿大、欧盟、英国；个人仅限美国和加拿大。以中国大陆个人身份目前不适合作为首选。
-- 如果未来由符合地区条件的上游组织持有，可在 electron-builder 中改用 `win.azureSignOptions` 和 Azure 身份环境变量。
-
-**D. Microsoft Store 的 MSIX**
-
-- Store 提交的 MSIX 由 Microsoft 免费重新签名。
-- 当前工程产物是 NSIS EXE，不是 MSIX；转换还要验证 Python sidecar、文件写入、回环服务和 Store policy，不是简单换扩展名。
-
-**E. 自签名证书**
-
-- 只适合自己电脑、虚拟机或由单位统一下发根证书的内部环境。
-- 对公网用户不会建立系统信任，也不能解决 SmartScreen，因此不应作为公开发布方案。
-
-### 7.3 当前工程需要怎样接入
-
-传统可导出 PFX 的最小接入方式：
-
-1. 在私有 CI secret 中配置 `CSC_LINK`（证书文件的 base64/data URL 或受保护路径）和 `CSC_KEY_PASSWORD`。
-2. GitHub Actions 运行 electron-builder 时自动签署内部应用 EXE 和 NSIS 安装器。
-3. 运行 `Get-AuthenticodeSignature` 和 SignTool 校验。
-4. 必须使用 SHA-256 和 RFC 3161 时间戳，保证证书到期后已签名版本仍可验证。
-
-验证示例：
-
-```powershell
-Get-AuthenticodeSignature .\Vibe-Trading-Desktop-Community-0.3.0-x64.exe
-signtool verify /pa /all /v .\Vibe-Trading-Desktop-Community-0.3.0-x64.exe
-```
-
-公开稳定版应显示 `Valid`。注意：可信签名确认发布者和文件未被篡改，但新程序仍可能需要一段时间积累 SmartScreen reputation；现在不要为了“立刻无警告”盲目购买昂贵 EV 证书。
-
-## 8. 如何联系原作者
-
-仓库没有在 README 或贡献指南中公开项目邮箱。当前最合适、最透明的入口是：
-
-1. [GitHub Discussions](https://github.com/HKUDS/Vibe-Trading/discussions) 的 **Ideas** 分类；
-2. 如果数日没有回应，再按贡献指南使用 [Feature request](https://github.com/HKUDS/Vibe-Trading/issues/new/choose)；
-3. 讨论取得方向后，再从真正的 fork 创建分块、带 DCO 的 Draft PR。
-
-项目 Discussions 已启用；`@warren618`（Haozhe Wu）在仓库公告、讨论和维护活动中非常活跃，可在讨论中礼貌 @ 他。不要先私下发送一个来源不明的 EXE，也不要先宣称这是官方桌面端。最有效的方式是公开说明架构、验证、已知限制和你希望维护者决定的问题。
-
-建议 Discussion 标题：
-
-```text
-Proposal: Windows desktop shell and installer for Vibe-Trading
-```
-
-建议发送的英文正文已经完整写在 `README.en.md` 的“Maintainer contact template”章节。首次联系时先给源码分支/交接说明和截图；安装器可作为可选测试资产，同时附 SHA-256，并明确“unsigned Alpha / unofficial”。
-
-希望维护者明确回答：
-
-1. 代码应进入主仓库的 `desktop/`、单独 companion repo，还是保持 community fork？
-2. 审核阶段允许使用什么名称、图标和商标措辞？
-3. 如果官方化，谁持有 Windows 签名和 GitHub Releases 更新源？
-4. 默认 Windows 运行时应内置哪些可选 IM SDK？
-5. 个人微信 iLink 是否适合作为官方桌面分发支持面？
-6. 维护者希望先审桌面外壳，还是先审最小后端/前端接口？
-
-## 9. 下一阶段优先级
-
-1. 在真实 fork 上重建可审查的 DCO commit 历史，并同步最新 `main`。
-2. 联系上游，确定仓库、品牌、更新源和签名归属。
-3. 将最终 0.3.0 安装到干净 Windows 11 快照，完成回归。
-4. 在测试仓库发布 `0.3.0 -> 0.3.1`，验证检查、下载、重启和升级。
-5. 申请 SignPath 或由确定的发布主体采购/配置证书。
-6. 做依赖体积分析，按“核心运行时 + 可选连接器包”拆分，而不是随意删除 Python 包。
-7. 对首次路由加载、后端冷启动和杀毒软件扫描耗时分别打点后再优化。
-8. 生成第三方许可证清单和 SBOM，补齐正式发布说明。
-
-## 10. 许可证与责任
-
-上游使用 MIT License。本交接包保留了 `LICENSE` 和 `NOTICE`。公开发布时必须保留上游版权和许可信息，并继续使用“Community/Unofficial”措辞，直到 HKUDS 书面或公开确认官方身份。
-
-这是金融研究工具，不保证模型、数据或策略正确，也不应绕过上游现有的真实交易授权、风控、确认和审计边界。
+项目继续遵循上游 MIT License。Vibe-Trading 及其原始成果归原作者所有；重新分发的第三方组件继续受各自许可证和声明约束。

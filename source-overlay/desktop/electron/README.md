@@ -18,6 +18,8 @@ ship a relocatable Python 3.12 runtime under `resources/backend`; set
 
 ## Run from source
 
+> **Prerequisite:** this directory is published as part of a source overlay. Before running the commands below, restore the entire overlay into a complete Vibe-Trading checkout matching the upstream `0.1.11` baseline. These commands will not work correctly from the standalone overlay repository.
+
 ```powershell
 cd desktop\electron
 npm install
@@ -66,7 +68,7 @@ The current build has been verified end to end on Windows:
 - The maximum-compression NSIS installer is about 247.7 MiB, 79.6% smaller than the
   original store-mode prototype.
 
-Build commands:
+After the overlay has been restored into the complete upstream source tree, run the build commands from `desktop\electron`:
 
 ```powershell
 npm run runtime:win
