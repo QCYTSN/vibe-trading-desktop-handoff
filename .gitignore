@@ -1,0 +1,23 @@
+# Local GitHub Release payloads. Keep large binaries out of Git history.
+release-assets/*.exe
+release-assets/*.zip
+release-assets/*.blockmap
+release-assets/latest.yml
+
+# Generated desktop and frontend artifacts.
+**/node_modules/
+**/dist/
+**/runtime/
+**/release/
+**/win-unpacked/
+**/.cache/
+**/__pycache__/
+*.pyc
+
+# Local credentials and signing material.
+.env
+.env.*
+*.pfx
+*.p12
+*.pem
+*.key
