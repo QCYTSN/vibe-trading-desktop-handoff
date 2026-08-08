@@ -1,57 +1,47 @@
-# Vibe-Trading Desktop Community
+# Vibe-Trading Desktop Community — Archived Handoff
 
 [English](README.en.md) | [简体中文](README.zh-CN.md)
 
-An **unofficial Windows desktop prototype** for [HKUDS/Vibe-Trading](https://github.com/HKUDS/Vibe-Trading). It packages the existing React interface and local Python/FastAPI service into a desktop application with an installer, process lifecycle management, safer local credential storage, and several usability improvements.
+This repository is the historical, source-first handoff that was used to
+present an unofficial Windows desktop prototype for
+[HKUDS/Vibe-Trading](https://github.com/HKUDS/Vibe-Trading).
 
-> This is a community Alpha and is not an official HKUDS desktop client. It is research software, not investment advice.
+Active development has moved to the real fork and upstream pull requests:
 
-![Vibe-Trading Desktop home](preview/desktop-home.png)
+- [#923](https://github.com/HKUDS/Vibe-Trading/pull/923) — desktop shell and
+  backend lifecycle, merged;
+- [#924](https://github.com/HKUDS/Vibe-Trading/pull/924) — provider/model
+  discovery and runtime UX, merged;
+- [#1015](https://github.com/HKUDS/Vibe-Trading/pull/1015) — Windows packaging
+  and secure credential storage, under review.
 
-## Current status
-
-- Upstream package baseline: Vibe-Trading `0.1.11`
-- Desktop prototype: `0.3.0 Alpha`
-- Platform: Windows 10/11 x64
-- Packaging: Electron + embedded Python runtime + existing React/FastAPI application
-- Distribution: unsigned community installer; Windows may show a SmartScreen warning
-
-The public Git repository does **not** contain an installer executable. Installers are generated release artifacts and, once published, are available only from the repository's GitHub Releases page.
-
-## What the desktop version adds
-
-- One-click desktop startup and shutdown of the local backend
-- Single-instance handling, random loopback port, health checks, startup diagnostics, and child-process cleanup
-- Windows installer with an embedded Python runtime
-- Windows-encrypted storage for desktop API credentials
-- First-run privacy, security, and financial-risk disclosure
-- Improved provider/model discovery and model selection
-- Visible runtime provider, model, reasoning setting, and response duration in chat
-- Fixed reply-copy behavior and faster first navigation through route preloading
-- Registry-driven IM channel management for the adapters already supported by Vibe-Trading
-- A draft GitHub Releases update and release workflow, pending end-to-end release validation
-
-## Screenshots
-
-First-run disclosure:
-
-![Vibe-Trading Desktop onboarding](preview/desktop-onboarding.png)
-
-Main interface:
+> This repository is archived for provenance only. Its `source-overlay/` was
+> based on an old 0.1.11 source snapshot and must not be treated as the current
+> product source, an upstream-ready patch, or a release channel.
 
 ![Vibe-Trading Desktop home](preview/desktop-home.png)
 
-## Known limitations
+## Current source of truth
 
-- The installer is not code-signed yet.
-- Final clean-Windows validation of this exact `0.3.0` build is still pending.
-- The in-app updater has not completed a real `N -> N+1` release test and is disabled until a release repository is selected.
-- Package size and cold-start/first-navigation performance still need optimization.
-- Real-account end-to-end testing has not been completed for every optional IM adapter.
-- This repository contains a source overlay from a source snapshot without the original Git history; it is not presented as an upstream-ready patch series.
+Use the current upstream repository and the active fork branch instead:
 
-See [README.en.md](README.en.md) or [README.zh-CN.md](README.zh-CN.md) for installation, validation, architecture, and development details.
+- upstream: [HKUDS/Vibe-Trading](https://github.com/HKUDS/Vibe-Trading)
+- contributor fork: [QCYTSN/Vibe-Trading](https://github.com/QCYTSN/Vibe-Trading)
+- packaging branch: `agent/windows-packaging`
 
-## License and upstream relationship
+No installer is published from this handoff repository. The unsigned installer
+produced during packaging review is a local/CI review artifact and is not safe
+to distribute as a user release.
 
-The code remains under the upstream project's MIT License. `Vibe-Trading` belongs to its original authors. This repository does not claim official status or endorsement by HKUDS.
+## Remaining release gates
+
+- upstream review and merge of the Windows packaging PR;
+- an agreed Authenticode signing identity and release owner;
+- a signed installer test on a clean Windows machine;
+- a separate, real signed 0.3.0 to 0.3.1 updater test before any updater is
+  enabled;
+- continued work on package size and cold-start performance.
+
+This community work remains unofficial unless HKUDS explicitly changes its
+release ownership or branding. Vibe-Trading and its original work belong to
+the upstream authors and remain covered by the upstream MIT license.
